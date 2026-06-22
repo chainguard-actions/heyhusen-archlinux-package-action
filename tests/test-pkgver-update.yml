@@ -1,0 +1,57 @@
+name: Test pkgver and pkgrel update
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create minimal PKGBUILD with initial version
+        run: |
+          cat > "$GITHUB_WORKSPACE/PKGBUILD" << 'EOF'
+          # Maintainer: Test User <test@example.com>
+          pkgname=hello-world-test
+          pkgver=1.0.0
+          pkgrel=1
+          pkgdesc="A minimal test package"
+          arch=('any')
+          url="https://example.com"
+          license=('MIT')
+          depends=()
+          makedepends=()
+          source=()
+          sha256sums=()
+
+          package() {
+            mkdir -p "$pkgdir/usr/share/$pkgname"
+            echo "Hello, World!" > "$pkgdir/usr/share/$pkgname/hello.txt"
+          }
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          pkgver: '2.0.0'
+          pkgrel: '3'
+          namcap: 'false'
+          archlinux_keyring: 'false'
+          flags: '-cfs --noconfirm'
+
+      - name: Assert pkgver was updated in PKGBUILD
+        run: |
+          echo "PKGBUILD contents:"
+          cat "$GITHUB_WORKSPACE/PKGBUILD"
+          if ! grep -q 'pkgver=2.0.0' "$GITHUB_WORKSPACE/PKGBUILD"; then
+            echo "FAIL: pkgver was not updated to 2.0.0"
+            exit 1
+          fi
+          echo "PASS: pkgver updated correctly"
+
+      - name: Assert pkgrel was updated in PKGBUILD
+        run: |
+          if ! grep -q 'pkgrel=3' "$GITHUB_WORKSPACE/PKGBUILD"; then
+            echo "FAIL: pkgrel was not updated to 3"
+            exit 1
+          fi
+          echo "PASS: pkgrel updated correctly"

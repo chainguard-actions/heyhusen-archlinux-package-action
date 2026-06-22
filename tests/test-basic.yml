@@ -1,0 +1,45 @@
+name: Test basic package build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create minimal PKGBUILD
+        run: |
+          cat > "$GITHUB_WORKSPACE/PKGBUILD" << 'EOF'
+          # Maintainer: Test User <test@example.com>
+          pkgname=hello-world-test
+          pkgver=1.0.0
+          pkgrel=1
+          pkgdesc="A minimal test package"
+          arch=('any')
+          url="https://example.com"
+          license=('MIT')
+          depends=()
+          makedepends=()
+          source=()
+          sha256sums=()
+
+          package() {
+            mkdir -p "$pkgdir/usr/share/$pkgname"
+            echo "Hello, World!" > "$pkgdir/usr/share/$pkgname/hello.txt"
+          }
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          namcap: 'false'
+          archlinux_keyring: 'false'
+          flags: '-cfs --noconfirm'
+
+      - name: Assert PKGBUILD was copied back
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/PKGBUILD" ]; then
+            echo "FAIL: PKGBUILD not found in workspace after action"
+            exit 1
+          fi
+          echo "PASS: PKGBUILD exists in workspace"

@@ -1,0 +1,52 @@
+name: Test .SRCINFO generation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create minimal PKGBUILD
+        run: |
+          cat > "$GITHUB_WORKSPACE/PKGBUILD" << 'EOF'
+          # Maintainer: Test User <test@example.com>
+          pkgname=hello-world-test
+          pkgver=1.0.0
+          pkgrel=1
+          pkgdesc="A minimal test package"
+          arch=('any')
+          url="https://example.com"
+          license=('MIT')
+          depends=()
+          makedepends=()
+          source=()
+          sha256sums=()
+
+          package() {
+            mkdir -p "$pkgdir/usr/share/$pkgname"
+            echo "Hello, World!" > "$pkgdir/usr/share/$pkgname/hello.txt"
+          }
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          srcinfo: 'true'
+          namcap: 'false'
+          archlinux_keyring: 'false'
+          flags: '-cfs --noconfirm'
+
+      - name: Assert .SRCINFO was generated and copied back
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/.SRCINFO" ]; then
+            echo "FAIL: .SRCINFO was not generated"
+            exit 1
+          fi
+          echo ".SRCINFO contents:"
+          cat "$GITHUB_WORKSPACE/.SRCINFO"
+          if ! grep -q 'pkgname = hello-world-test' "$GITHUB_WORKSPACE/.SRCINFO"; then
+            echo "FAIL: .SRCINFO does not contain expected pkgname"
+            exit 1
+          fi
+          echo "PASS: .SRCINFO generated correctly"
