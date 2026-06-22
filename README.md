@@ -8,6 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
+| v2.3.0 | [`v2.3.0`](https://github.com/chainguard-actions/heyhusen-archlinux-package-action/tree/v2.3.0) | [`5b75404`](https://github.com/heyhusen/archlinux-package-action/commit/5b75404b8d9faaf06062f98a4b94ba4b0774c0d5) |
 | v2.4.0 | [`v2.4.0`](https://github.com/chainguard-actions/heyhusen-archlinux-package-action/tree/v2.4.0) | [`04303ce`](https://github.com/heyhusen/archlinux-package-action/commit/04303ce8da27317c34f00ea0a2c61ee0eed65ee3) |
 
 ## Privacy
