@@ -1,0 +1,32 @@
+name: Test .SRCINFO generation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          path: tests/fixtures/pkg
+          srcinfo: 'true'
+          flags: '-cfs --noconfirm'
+          namcap: 'false'
+          archlinux_keyring: 'false'
+      - name: Assert .SRCINFO was generated
+        run: |
+          SRCINFO_PATH="$GITHUB_WORKSPACE/tests/fixtures/pkg/.SRCINFO"
+          echo "Checking for .SRCINFO at: $SRCINFO_PATH"
+          ls -la "$GITHUB_WORKSPACE/tests/fixtures/pkg/" || true
+          if [ ! -f "$SRCINFO_PATH" ]; then
+            echo "FAIL: .SRCINFO was not generated"
+            exit 1
+          fi
+          echo "Contents of .SRCINFO:"
+          cat "$SRCINFO_PATH"
+          if ! grep -q "pkgname = hello-world-test" "$SRCINFO_PATH"; then
+            echo "FAIL: .SRCINFO does not contain expected pkgname"
+            exit 1
+          fi
+          echo "PASS: .SRCINFO generated correctly"

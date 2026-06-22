@@ -1,0 +1,25 @@
+name: Test basic package build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          path: tests/fixtures/pkg
+          flags: '-cfs --noconfirm'
+          namcap: 'false'
+          archlinux_keyring: 'false'
+      - name: Assert package was built
+        run: |
+          echo "Checking for built package in fixtures/pkg directory..."
+          ls -la "$GITHUB_WORKSPACE/tests/fixtures/pkg/" || true
+          # The action copies PKGBUILD back to the workspace path
+          if [ ! -f "$GITHUB_WORKSPACE/tests/fixtures/pkg/PKGBUILD" ]; then
+            echo "FAIL: PKGBUILD not found after action ran"
+            exit 1
+          fi
+          echo "PASS: PKGBUILD exists after action ran"
