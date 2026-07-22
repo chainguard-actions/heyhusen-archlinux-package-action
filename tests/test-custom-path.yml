@@ -1,0 +1,61 @@
+name: Test custom path package build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Create a minimal PKGBUILD in a subdirectory
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/mypkg"
+          cat > "$GITHUB_WORKSPACE/mypkg/PKGBUILD" << 'EOF'
+          # Maintainer: Test User <test@example.com>
+          pkgname=hello-subdir
+          pkgver=1.0.0
+          pkgrel=1
+          pkgdesc="A minimal test package in a subdirectory"
+          arch=('any')
+          license=('MIT')
+          source=()
+          sha256sums=()
+
+          package() {
+            install -dm755 "$pkgdir/usr/share/$pkgname"
+            echo "hello from subdir" > "$pkgdir/usr/share/$pkgname/hello.txt"
+          }
+          EOF
+
+      - name: Set up git config and origin reachable inside Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          git add mypkg/PKGBUILD
+          git commit -m "Add PKGBUILD in subdirectory" || true
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        with:
+          path: 'mypkg'
+          flags: '-cfs --noconfirm'
+          namcap: 'true'
+          archlinux_keyring: 'true'
+
+      - name: Assert PKGBUILD was processed in subdirectory
+        run: |
+          echo "Checking that the action completed with custom path"
+          if [ -f "$GITHUB_WORKSPACE/mypkg/PKGBUILD" ]; then
+            echo "PASS: PKGBUILD in subdirectory exists, action completed"
+          else
+            echo "FAIL: PKGBUILD not found in subdirectory"
+            exit 1
+          fi

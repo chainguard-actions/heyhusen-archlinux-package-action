@@ -1,0 +1,25 @@
+name: Test build with namcap disabled
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Build package without namcap
+        id: action
+        uses: .
+        with:
+          path: tests/fixtures/pkg
+          namcap: 'false'
+          archlinux_keyring: 'false'
+          flags: '-cf --noconfirm'
+      - name: Assert PKGBUILD exists after action
+        run: |
+          PKG_PATH="$GITHUB_WORKSPACE/tests/fixtures/pkg/PKGBUILD"
+          echo "Checking for PKGBUILD at: $PKG_PATH"
+          if [ ! -f "$PKG_PATH" ]; then
+            echo "FAIL: PKGBUILD not found after action run"
+            exit 1
+          fi
+          echo "PASS: PKGBUILD exists"

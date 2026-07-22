@@ -1,0 +1,36 @@
+name: Test pkgver and pkgrel update
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Build package with updated pkgver and pkgrel
+        id: action
+        uses: .
+        with:
+          path: tests/fixtures/pkg
+          pkgver: '2.0.0'
+          pkgrel: '2'
+          namcap: 'false'
+          archlinux_keyring: 'false'
+          flags: '-cf --noconfirm'
+      - name: Assert PKGBUILD was updated with new pkgver
+        run: |
+          PKG_PATH="$GITHUB_WORKSPACE/tests/fixtures/pkg/PKGBUILD"
+          echo "Checking PKGBUILD contents:"
+          cat "$PKG_PATH"
+          if ! grep -q "pkgver=2.0.0" "$PKG_PATH"; then
+            echo "FAIL: pkgver was not updated to 2.0.0"
+            exit 1
+          fi
+          echo "PASS: pkgver updated correctly"
+      - name: Assert PKGBUILD was updated with new pkgrel
+        run: |
+          PKG_PATH="$GITHUB_WORKSPACE/tests/fixtures/pkg/PKGBUILD"
+          if ! grep -q "pkgrel=2" "$PKG_PATH"; then
+            echo "FAIL: pkgrel was not updated to 2"
+            exit 1
+          fi
+          echo "PASS: pkgrel updated correctly"

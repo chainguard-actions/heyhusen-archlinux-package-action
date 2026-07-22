@@ -1,0 +1,17 @@
+# Maintainer: Test User <test@example.com>
+pkgname=hello-test
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="A simple test package"
+arch=('any')
+url="https://example.com"
+license=('MIT')
+depends=()
+makedepends=()
+source=()
+sha256sums=()
+
+package() {
+    install -dm755 "$pkgdir/usr/share/hello-test"
+    echo "Hello, World!" > "$pkgdir/usr/share/hello-test/hello.txt"
+}

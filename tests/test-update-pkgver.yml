@@ -1,0 +1,69 @@
+name: Test pkgver and pkgrel update
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Create a minimal PKGBUILD with old version
+        run: |
+          cat > "$GITHUB_WORKSPACE/PKGBUILD" << 'EOF'
+          # Maintainer: Test User <test@example.com>
+          pkgname=hello-version
+          pkgver=0.9.0
+          pkgrel=1
+          pkgdesc="A minimal test package for version update"
+          arch=('any')
+          license=('MIT')
+          source=()
+          sha256sums=()
+
+          package() {
+            install -dm755 "$pkgdir/usr/share/$pkgname"
+            echo "hello" > "$pkgdir/usr/share/$pkgname/hello.txt"
+          }
+          EOF
+
+      - name: Set up git config and origin reachable inside Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          git add PKGBUILD
+          git commit -m "Add PKGBUILD with old version" || true
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        with:
+          pkgver: '2.0.0'
+          pkgrel: '3'
+          flags: '-cfs --noconfirm'
+          namcap: 'false'
+          archlinux_keyring: 'true'
+
+      - name: Assert PKGBUILD was updated with new version
+        run: |
+          echo "Checking that PKGBUILD was updated with new pkgver and pkgrel"
+          if grep -q "pkgver=2.0.0" "$GITHUB_WORKSPACE/PKGBUILD"; then
+            echo "PASS: pkgver updated to 2.0.0"
+          else
+            echo "FAIL: pkgver not updated"
+            cat "$GITHUB_WORKSPACE/PKGBUILD"
+            exit 1
+          fi
+          if grep -q "pkgrel=3" "$GITHUB_WORKSPACE/PKGBUILD"; then
+            echo "PASS: pkgrel updated to 3"
+          else
+            echo "FAIL: pkgrel not updated"
+            cat "$GITHUB_WORKSPACE/PKGBUILD"
+            exit 1
+          fi
