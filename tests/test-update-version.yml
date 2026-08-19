@@ -1,0 +1,63 @@
+name: Test pkgver and pkgrel update
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up PKGBUILD in workspace root
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/PKGBUILD" "$GITHUB_WORKSPACE/PKGBUILD"
+
+      - name: Set up git origin reachable inside Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          git add PKGBUILD
+          git commit -m "Add PKGBUILD for test" || true
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - name: Run action - update pkgver and pkgrel, skip makepkg and namcap
+        id: action
+        uses: .
+        with:
+          pkgver: '2.0.0'
+          pkgrel: '3'
+          namcap: 'false'
+          flags: ''
+          archlinux_keyring: 'false'
+          updpkgsums: 'false'
+          srcinfo: 'false'
+          aur: 'false'
+
+      - name: Assert PKGBUILD was updated with new pkgver
+        run: |
+          echo "Checking PKGBUILD contents:"
+          cat "$GITHUB_WORKSPACE/PKGBUILD"
+          PKGVER=$(grep '^pkgver=' "$GITHUB_WORKSPACE/PKGBUILD" | cut -d= -f2)
+          echo "pkgver: $PKGVER"
+          if [ "$PKGVER" != "2.0.0" ]; then
+            echo "FAIL: expected pkgver=2.0.0 but got pkgver=$PKGVER"
+            exit 1
+          fi
+          echo "PASS: pkgver updated correctly"
+
+      - name: Assert PKGBUILD was updated with new pkgrel
+        run: |
+          PKGREL=$(grep '^pkgrel=' "$GITHUB_WORKSPACE/PKGBUILD" | cut -d= -f2)
+          echo "pkgrel: $PKGREL"
+          if [ "$PKGREL" != "3" ]; then
+            echo "FAIL: expected pkgrel=3 but got pkgrel=$PKGREL"
+            exit 1
+          fi
+          echo "PASS: pkgrel updated correctly"

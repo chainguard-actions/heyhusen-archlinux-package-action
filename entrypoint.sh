@@ -79,7 +79,8 @@ fi
 # Run makepkg
 if [[ -n $INPUT_FLAGS ]]; then
     echo "::group::Running makepkg with flags"
-    makepkg $INPUT_FLAGS
+    read -ra FLAGS_ARRAY <<< "$INPUT_FLAGS"
+    makepkg "${FLAGS_ARRAY[@]}"
     echo "::endgroup::"
 fi
 

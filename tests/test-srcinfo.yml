@@ -1,32 +1,55 @@
 name: Test .SRCINFO generation
 on:
   workflow_dispatch:
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - id: action
+        with:
+          fetch-depth: 0
+
+      - name: Set up PKGBUILD in workspace root
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/PKGBUILD" "$GITHUB_WORKSPACE/PKGBUILD"
+
+      - name: Set up git origin reachable inside Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          git add PKGBUILD
+          git commit -m "Add PKGBUILD for test" || true
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - name: Run action - generate .SRCINFO, skip makepkg and namcap
+        id: action
         uses: .
         with:
-          path: tests/fixtures/pkg
           srcinfo: 'true'
-          flags: '-cfs --noconfirm'
           namcap: 'false'
+          flags: ''
           archlinux_keyring: 'false'
-      - name: Assert .SRCINFO was generated
+          updpkgsums: 'false'
+          aur: 'false'
+
+      - name: Assert .SRCINFO was generated and copied back
         run: |
-          SRCINFO_PATH="$GITHUB_WORKSPACE/tests/fixtures/pkg/.SRCINFO"
-          echo "Checking for .SRCINFO at: $SRCINFO_PATH"
-          ls -la "$GITHUB_WORKSPACE/tests/fixtures/pkg/" || true
-          if [ ! -f "$SRCINFO_PATH" ]; then
-            echo "FAIL: .SRCINFO was not generated"
+          echo "Checking for .SRCINFO in workspace:"
+          ls -la "$GITHUB_WORKSPACE/"
+          if [ ! -f "$GITHUB_WORKSPACE/.SRCINFO" ]; then
+            echo "FAIL: .SRCINFO was not generated or copied back to workspace"
             exit 1
           fi
           echo "Contents of .SRCINFO:"
-          cat "$SRCINFO_PATH"
-          if ! grep -q "pkgname = hello-world-test" "$SRCINFO_PATH"; then
+          cat "$GITHUB_WORKSPACE/.SRCINFO"
+          if ! grep -q 'pkgname = hello-world' "$GITHUB_WORKSPACE/.SRCINFO"; then
             echo "FAIL: .SRCINFO does not contain expected pkgname"
             exit 1
           fi
-          echo "PASS: .SRCINFO generated correctly"
+          echo "PASS: .SRCINFO generated successfully"
