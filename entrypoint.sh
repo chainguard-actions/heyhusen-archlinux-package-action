@@ -12,7 +12,7 @@ cd gh-action
 if [[ -n $INPUT_PGPKEYS ]]; then
   echo "::group::Loading PGP keys"
   for key in ${INPUT_PGPKEYS//,/$'\n'}; do
-    gpg --keyserver $INPUT_PGPKEYSERVER --recv-keys $key
+    gpg --keyserver "$INPUT_PGPKEYSERVER" --recv-keys "$key"
   done
   echo "::endgroup::"
 fi
@@ -22,7 +22,7 @@ fi
 # tree the output will be incorrect.
 if [[ -n $INPUT_PATH ]]; then
   cp -rTfv "$GITHUB_WORKSPACE"/ ./
-  cd $INPUT_PATH
+  cd "$INPUT_PATH"
 else
   # Without a custom path though, we can just grab the .git directory and the PKGBUILD.
   cp -rfv "$GITHUB_WORKSPACE"/.git ./
@@ -87,7 +87,8 @@ fi
 # Run makepkg
 if [[ -n $INPUT_FLAGS ]]; then
     echo "::group::Running makepkg with flags"
-    makepkg $INPUT_FLAGS
+    read -ra makepkg_flags <<< "$INPUT_FLAGS"
+    makepkg "${makepkg_flags[@]}"
     echo "::endgroup::"
 fi
 

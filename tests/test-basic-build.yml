@@ -1,0 +1,47 @@
+name: Test basic package build
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up PKGBUILD in workspace root
+        run: |
+          cp tests/fixtures/PKGBUILD "$GITHUB_WORKSPACE/PKGBUILD"
+
+      - name: Initialize git repo state (needed for git diff in entrypoint)
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test"
+          git add PKGBUILD
+          git commit -m "add PKGBUILD" --allow-empty
+
+      - id: action
+        uses: .
+        with:
+          namcap: 'false'
+          archlinux_keyring: 'false'
+          flags: '-cfs --noconfirm'
+
+      - name: Assert PKGBUILD still exists after action
+        run: |
+          echo "Workspace contents:"
+          ls -la "$GITHUB_WORKSPACE/"
+          if [ ! -f "$GITHUB_WORKSPACE/PKGBUILD" ]; then
+            echo "FAIL: PKGBUILD not found in workspace after action"
+            exit 1
+          fi
+          echo "PASS: PKGBUILD exists in workspace"
+
+      - name: Assert PKGBUILD contains expected package name
+        run: |
+          echo "PKGBUILD contents:"
+          cat "$GITHUB_WORKSPACE/PKGBUILD"
+          if ! grep -q "pkgname=hello-world-test" "$GITHUB_WORKSPACE/PKGBUILD"; then
+            echo "FAIL: PKGBUILD does not contain expected pkgname"
+            exit 1
+          fi
+          echo "PASS: PKGBUILD contains correct pkgname"
